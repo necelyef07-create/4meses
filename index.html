@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corazón de "Te Amo" en Varios Idiomas</title>
+    <!-- Tailwind CSS CDN para estilos responsivos adicionales si fuera necesario -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos principales para asegurar pantalla completa y fondo negro absoluto */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Overlay con instrucción sutil */
+        .ui-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            color: #d8b4fe;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0.7;
+            text-shadow: 0 0 10px #a855f7;
+            animation: pulseText 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseText {
+            0%, 100% { opacity: 0.4; transform: translateX(-50%) scale(0.98); }
+            50% { opacity: 0.8; transform: translateX(-50%) scale(1.02); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Canvas donde se renderizan las partículas y palabras -->
+    <canvas id="heartCanvas"></canvas>
+
+    <!-- Overlay de instrucción interactiva -->
+    <div class="ui-overlay">
+        Mueve el mouse o toca para hacer brillar y mover el corazón
+    </div>
+
+    <script>
+        window.onload = function() {
+            const canvas = document.getElementById('heartCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Palabras "Te Amo" en más de 30 idiomas distintos
+            const lovePhrases = [
+                { text: "Te amo", lang: "Español" },
+                { text: "I love you", lang: "Inglés" },
+                { text: "Je t'aime", lang: "Francés" },
+                { text: "Ti amo", lang: "Italiano" },
+                { text: "Ich liebe dich", lang: "Alemán" },
+                { text: "Eu te amo", lang: "Portugués" },
+                { text: "愛してる", lang: "Japonés" },
+                { text: "사랑해", lang: "Coreano" },
+                { text: "我爱你", lang: "Chino" },
+                { text: "Я тебя люблю", lang: "Ruso" },
+                { text: "أحبك", lang: "Árabe" },
+                { text: "Σ' αγαπώ", lang: "Griego" },
+                { text: "Ik hou van jou", lang: "Neerlandés" },
+                { text: "Seni seviyorum", lang: "Turco" },
+                { text: "मैं तुमसे प्यार करता हूँ", lang: "Hindi" },
+                { text: "Kocham Cię", lang: "Polaco" },
+                { text: "Te iubesc", lang: "Rumano" },
+                { text: "Jeg elsker deg", lang: "Noruego" },
+                { text: "S'agapo", lang: "Griego" },
+                { text: "Szeretlek", lang: "Húngaro" },
+                { text: "Minä rakastan sinua", lang: "Finlandés" },
+                { text: "Volim te", lang: "Croata/Serbia" },
+                { text: "T'estimo", lang: "Catalán" },
+                { text: "Mahal kita", lang: "Tagalo" },
+                { text: "Aku cinta kamu", lang: "Indonesio" },
+                { text: "Tôi yêu bạn", lang: "Vietnamita" },
+                { text: "ฉันรักคุณ", lang: "Tailandés" },
+                { text: "Miluji tě", lang: "Checo" },
+                { text: "Obicham te", lang: "Búlgaro" },
+                { text: "Inoshanda", lang: "Shona" },
+                { text: "T'estimo molt", lang: "Valenciano" },
+                { text: "Aloha Au Ia 'Oe", lang: "Hawaiano" }
+            ];
+
+            // Paleta de colores morados/púrpuras brillantes y neón
+            const purplePalette = [
+                "#d8b4fe", // Morado muy claro
+                "#c084fc", // Morado claro neón
+                "#a855f7", // Púrpura medio
+                "#9333ea", // Púrpura intenso
+                "#7e22ce", // Púrpura profundo
+                "#e879f9", // Fuchsia morado
+                "#f0abfc", // Violeta brillante
+                "#c026d3", // Magenta/Morado neón
+                "#ffffff"  // Destellos blancos
+            ];
+
+            let width, height;
+            let particles = [];
+            let sparkParticles = [];
+            const particleCount = 280; // Cantidad total de palabras/partículas flotantes
+            
+            // Interacción con mouse/touch
+            let mouse = {
+                x: -1000,
+                y: -1000,
+                radius: 180,
+                active: false
+            };
+
+            // Ajustar el canvas al tamaño del navegador
+            function resizeCanvas() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // Ecuación matemática paramétrica del corazón 2D/3D
+            function getHeartPosition(t) {
+                // Ecuación clásica de forma de corazón
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+                return { x, y };
+            }
+
+            // Clase Partícula que representa cada frase o punto morado
+            class HeartParticle {
+                constructor(index) {
+                    this.index = index;
+                    this.reset();
+                }
+
+                reset() {
+                    // Ángulo a lo largo de la curva del corazón (0 a 2PI)
+                    this.t = Math.random() * Math.PI * 2;
+                    
+                    // Posición objetivo original dada por la fórmula del corazón
+                    const pos = getHeartPosition(this.t);
+                    
+                    // Escala ajustable según resolución de pantalla
+                    const scale = Math.min(width, height) / 42;
+                    
+                    // Posición base
+                    this.baseX = pos.x * scale;
+                    this.baseY = pos.y * scale;
+
+                    // Grosor/volumen del corazón (desplazamiento aleatorio interior/exterior)
+                    const offsetRange = 25;
+                    this.offsetX = (Math.random() - 0.5) * offsetRange;
+                    this.offsetY = (Math.random() - 0.5) * offsetRange;
+
+                    // Coordenadas actuales
+                    this.x = width / 2 + this.baseX;
+                    this.y = height / 2 + this.baseY;
+
+                    // Velocidad de flotación propia
+                    this.vx = (Math.random() - 0.5) * 0.8;
+                    this.vy = (Math.random() - 0.5) * 0.8;
+
+                    // Asignación de frase aleatoria e idioma
+                    const phraseObj = lovePhrases[Math.floor(Math.random() * lovePhrases.length)];
+                    this.text = phraseObj.text;
+                    
+                    // Color y tamaño
+                    this.color = purplePalette[Math.floor(Math.random() * purplePalette.length)];
+                    this.fontSize = Math.floor(Math.random() * 10) + 12; // De 12px a 22px
+                    this.alpha = Math.random() * 0.7 + 0.3;
+                    
+                    // Oscilación de brillo y movimiento sinusoidal
+                    this.pulseSpeed = 0.02 + Math.random() * 0.03;
+                    this.pulseAngle = Math.random() * Math.PI * 2;
+                    this.orbitRadius = Math.random() * 15 + 5;
+                    this.orbitSpeed = (Math.random() - 0.5) * 0.02;
+                }
+
+                update(time) {
+                    // Movimiento de respiración global del corazón (latido)
+                    const beat = Math.sin(time * 0.003) * 0.08 + 1;
+                    const pulseBeat = Math.sin(time * 0.006) > 0.6 ? 1.05 : 1; // Latido doble sutil
+                    
+                    const scale = (Math.min(width, height) / 42) * beat * pulseBeat;
+
+                    // Actualizar ángulo de órbita individual
+                    this.t += this.orbitSpeed;
+                    const pos = getHeartPosition(this.t);
+
+                    // Posición deseada ajustada
+                    let targetX = width / 2 + pos.x * scale + this.offsetX;
+                    let targetY = height / 2 + pos.y * scale + this.offsetY;
+
+                    // Interacción con la posición del ratón/táctil
+                    const dx = this.x - mouse.x;
+                    const dy = this.y - mouse.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < mouse.radius) {
+                        const force = (1 - dist / mouse.radius) * 60;
+                        const angle = Math.atan2(dy, dx);
+                        targetX += Math.cos(angle) * force;
+                        targetY += Math.sin(angle) * force;
+                    }
+
+                    // Transición suave (Lerp) hacia la posición objetivo
+                    this.x += (targetX - this.x) * 0.05;
+                    this.y += (targetY - this.y) * 0.05;
+
+                    // Variación del brillo (Alpha)
+                    this.pulseAngle += this.pulseSpeed;
+                    this.currentAlpha = this.alpha + Math.sin(this.pulseAngle) * 0.2;
+                    this.currentAlpha = Math.max(0.2, Math.min(1, this.currentAlpha));
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+
+                    // Efecto de resplandor Neón
+                    ctx.shadowColor = this.color;
+                    ctx.shadowBlur = mouse.active ? 18 : 10;
+                    
+                    ctx.fillStyle = this.color;
+                    ctx.globalAlpha = this.currentAlpha;
+                    ctx.font = `600 ${this.fontSize}px 'Inter', sans-serif`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+
+                    // Renderizar texto
+                    ctx.fillText(this.text, 0, 0);
+
+                    ctx.restore();
+                }
+            }
+
+            // Clase de chispas interactivas creadas con el movimiento del usuario
+            class Sparkle {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                    this.size = Math.random() * 4 + 1;
+                    this.vx = (Math.random() - 0.5) * 4;
+                    this.vy = (Math.random() - 0.5) * 4;
+                    this.color = purplePalette[Math.floor(Math.random() * purplePalette.length)];
+                    this.life = 1.0;
+                    this.decay = Math.random() * 0.03 + 0.015;
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.life -= this.decay;
+                }
+
+                draw() {
+                    if (this.life <= 0) return;
+                    ctx.save();
+                    ctx.globalAlpha = this.life;
+                    ctx.fillStyle = this.color;
+                    ctx.shadowColor = this.color;
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            // Inicialización de partículas del corazón
+            function init() {
+                particles = [];
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push(new HeartParticle(i));
+                }
+            }
+            init();
+
+            // Manejo de eventos de interacción mouse / touch
+            function handlePointerMove(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                mouse.x = clientX - rect.left;
+                mouse.y = clientY - rect.top;
+                mouse.active = true;
+
+                // Emisión de pequeñas chispas de brillo púrpura al mover el cursor
+                for (let i = 0; i < 2; i++) {
+                    sparkParticles.push(new Sparkle(mouse.x, mouse.y));
+                }
+            }
+
+            function handlePointerLeave() {
+                mouse.x = -1000;
+                mouse.y = -1000;
+                mouse.active = false;
+            }
+
+            // Event Listeners
+            window.addEventListener('mousemove', handlePointerMove);
+            window.addEventListener('touchstart', handlePointerMove, { passive: true });
+            window.addEventListener('touchmove', handlePointerMove, { passive: true });
+            window.addEventListener('mouseleave', handlePointerLeave);
+            window.addEventListener('touchend', handlePointerLeave);
+
+            // Clics para dispersión brillante
+            window.addEventListener('click', (e) => {
+                for (let i = 0; i < 25; i++) {
+                    sparkParticles.push(new Sparkle(e.clientX, e.clientY));
+                }
+            });
+
+            // Bucle principal de animación
+            function animate(time) {
+                // Fondo negro con estela sutil para movimiento fluido
+                ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+                ctx.fillRect(0, 0, width, height);
+
+                // Dibujar y actualizar frases en forma de corazón
+                particles.forEach(particle => {
+                    particle.update(time);
+                    particle.draw();
+                });
+
+                // Actualizar y renderizar chispas del ratón/touch
+                for (let i = sparkParticles.length - 1; i >= 0; i--) {
+                    const spark = sparkParticles[i];
+                    spark.update();
+                    spark.draw();
+                    if (spark.life <= 0) {
+                        sparkParticles.splice(i, 1);
+                    }
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            // Iniciar ciclo de animación al cargar la ventana
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
